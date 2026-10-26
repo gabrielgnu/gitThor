@@ -1,14 +1,22 @@
 const { execFile } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const LOG_FORMAT = '--format=%H%x00%P%x00%an%x00%ae%x00%aI%x00%s%x00%b';
 
 class GitError extends Error {
   constructor(message) { super(message); this.name = 'GitError'; }
 }
 
+function sanitizeError(message) {
+  return message
+    .replace(/((?:https?|ssh):\/\/)[^\s/]+@/gi, '$1[credenciales]@')
+    .replace(/([?&](?:access_token|token|password|api_key)=)[^\s&#"']+/gi, '$1[oculto]')
+    .replace(/(Authorization:\s*(?:Basic|Bearer)\s+)[^\s"']+/gi, '$1[oculto]');
+}
+
 function run(cwd, args, options = {}) {
   return new Promise((resolve, reject) => {
-    execFile('git', ['--no-pager', '-c', 'core.quotepath=false', ...args], {
+    execFile('git', ['--no-pager', '-c', 'core.quotepath=false', '-c', 'protocol.ext.allow=never', '-c', 'core.fsmonitor=false', ...args], {
       cwd, windowsHide: true, encoding: 'utf8', maxBuffer: 24 * 1024 * 1024,
       timeout: options.network ? 180000 : 60000,
       env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'Never', GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true' },
@@ -17,7 +25,7 @@ function run(cwd, args, options = {}) {
       const message = error.code === 'ENOENT' ? 'No se encontró Git. Instalá Git y reiniciá GitThor.'
         : error.killed ? 'Git excedió el tiempo de espera. Revisá el estado del repositorio antes de reintentar.'
         : (stderr || stdout || error.message).trim();
-      reject(new GitError(message.replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/g, '$1[credenciales]@')));
+      reject(new GitError(sanitizeError(message)));
     });
   });
 }
@@ -28,7 +36,7 @@ function text(value, label, max = 4096) {
 }
 function filePath(value) {
   text(value, 'Archivo');
-  if (path.isAbsolute(value) || /^[a-z]:/i.test(value) || value.split(/[\\/]/).includes('..')) throw new GitError('El archivo debe pertenecer al repositorio.');
+  if (path.isAbsolute(value) || path.win32.isAbsolute(value) || /^[a-z]:/i.test(value) || value.split(/[\\/]/).includes('..')) throw new GitError('El archivo debe pertenecer al repositorio.');
   return value;
 }
 function revision(value) {
@@ -55,10 +63,13 @@ function parseStatus(output) {
   return files;
 }
 function parseLog(output) {
-  return output.split('\x1e').map(row => row.replace(/^\n/, '')).filter(row => row.trim()).map(row => {
-    const [hash, parents, author, email, date, subject, ...body] = row.split('\x1f');
-    return { hash, parents: parents ? parents.split(' ') : [], author, email, date, subject, body: body.join('\x1f').trimEnd() };
-  });
+  const fields = output.split('\0'), commits = [];
+  for (let offset = 0; offset + 6 < fields.length; offset += 7) {
+    const [hash, parents, author, email, date, subject, body] = fields.slice(offset, offset + 7);
+    if (!/^[a-f0-9]{40,64}$/i.test(hash)) continue;
+    commits.push({ hash, parents: parents ? parents.split(' ') : [], author, email, date, subject, body: body.trimEnd() });
+  }
+  return commits;
 }
 
 class GitService {
@@ -73,10 +84,10 @@ class GitService {
     const [status, refs, log, remotes, stashes, upstream, operation] = await Promise.all([
       run(repo, ['status', '--porcelain=v1', '-z', '--untracked-files=all']),
       run(repo, ['for-each-ref', '--format=%(refname)%00%(objectname)%00%(upstream:short)%00%(HEAD)%00%(*objectname)', 'refs/heads', 'refs/remotes', 'refs/tags']),
-      run(repo, ['log', '--all', 'HEAD', '--date-order', `--max-count=${Math.min(5000, Math.max(1, Number(limit) || 400))}`, '--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%b%x1e']).catch(async error => {
+      run(repo, ['log', '-z', '--all', 'HEAD', '--date-order', `--max-count=${Math.min(5000, Math.max(1, Number(limit) || 400))}`, LOG_FORMAT]).catch(async error => {
         const exists = await run(repo, ['rev-parse', '--verify', 'HEAD']).then(() => true, () => false);
         if (exists) throw error;
-        return run(repo, ['log', '--all', '--date-order', '--max-count=400', '--format=%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%b%x1e']).catch(() => '');
+        return run(repo, ['log', '-z', '--all', '--date-order', '--max-count=400', LOG_FORMAT]).catch(() => '');
       }),
       run(repo, ['remote', '-v']),
       run(repo, ['stash', 'list', '--format=%gd%x00%H%x00%gs']),
@@ -177,12 +188,17 @@ class GitService {
     text(value, 'URL');
     if (!/^(https?:\/\/|ssh:\/\/|git:\/\/|[\w.-]+@[\w.-]+:)/i.test(value) && !path.isAbsolute(value)) throw new GitError('Usá una URL HTTPS/SSH o una ruta local absoluta.');
     if (/\s/.test(value) && !path.isAbsolute(value)) throw new GitError('La URL no puede contener espacios.');
+    if (/^(?:https?|ssh):\/\//i.test(value)) {
+      let url;
+      try { url = new URL(value); } catch { throw new GitError('URL inválida.'); }
+      if ((url.protocol !== 'ssh:' && url.username) || url.password || [...url.searchParams.keys()].some(key => /^(access_token|token|password|api_key)$/i.test(key))) throw new GitError('No incluyas credenciales en la URL. Configurá el administrador de credenciales de Git.');
+    }
     return value;
   }
   async clone(url, parent, name) {
     this.remoteUrl(url);
     text(name, 'Nombre', 128);
-    if (!/^[\p{L}\p{N}_. -]+$/u.test(name) || name === '.' || name === '..' || name.endsWith('.') || name.endsWith(' ')) throw new GitError('Nombre de carpeta inválido.');
+    if (!/^[\p{L}\p{N}_. -]+$/u.test(name) || name === '.' || name === '..' || name.endsWith('.') || name.endsWith(' ') || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name)) throw new GitError('Nombre de carpeta inválido.');
     const destination = path.join(parent, name);
     await run(parent, ['clone', '--', url, destination], { network: true });
     return this.root(destination);
@@ -190,4 +206,4 @@ class GitService {
   async init(folder) { await run(folder, ['init', '-b', 'main']); return this.root(folder); }
 }
 
-module.exports = { GitService, GitError, run, parseStatus, parseLog };
+module.exports = { GitService, GitError, run, parseStatus, parseLog, sanitizeError };

@@ -1,10 +1,15 @@
 {
   "name": "gitthor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An open source, cross-platform visual Git client",
   "homepage": "https://github.com/gabrielgnu/gitThor#readme",
-  "repository": { "type": "git", "url": "https://github.com/gabrielgnu/gitThor.git" },
-  "bugs": { "url": "https://github.com/gabrielgnu/gitThor/issues" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gabrielgnu/gitThor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gabrielgnu/gitThor/issues"
+  },
   "desktopName": "gitthor.desktop",
   "main": "electron/main.cjs",
   "author": "GitThor contributors",
@@ -15,9 +20,11 @@
   },
   "scripts": {
     "start": "electron .",
-    "test": "node --test tests/git-service.test.cjs",
+    "test": "node --test tests/git-service.test.cjs tests/security.test.cjs",
+    "test:security": "node --test tests/security.test.cjs",
+    "test:security:ui": "node scripts/security-ui.cjs",
     "test:ui": "node scripts/ui-smoke.cjs",
-    "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/git-service.cjs && node --check src/app.js && node --check src/graph.js && node --check scripts/package-linux.cjs && node --check scripts/ui-smoke.cjs && node --check scripts/packaged-smoke.cjs",
+    "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/git-service.cjs && node --check src/app.js && node --check src/graph.js && node --check scripts/package-linux.cjs && node --check scripts/ui-smoke.cjs && node --check scripts/packaged-smoke.cjs && node --check scripts/security-ui.cjs && node --check tests/security.test.cjs",
     "pack": "electron-builder --dir",
     "dist:win": "electron-builder --win zip --x64",
     "dist:win:portable": "electron-builder --win portable --x64",
@@ -33,6 +40,12 @@
     "appId": "org.gitthor.desktop",
     "productName": "GitThor",
     "asar": true,
+    "extraFiles": [
+      { "from": "README.md", "to": "README.md" },
+      { "from": "PRIVACY.md", "to": "PRIVACY.md" },
+      { "from": "SECURITY.md", "to": "SECURITY.md" },
+      { "from": "docs", "to": "docs" }
+    ],
     "directories": {
       "output": "dist"
     },
@@ -45,10 +58,14 @@
     ],
     "win": {
       "icon": "assets/icon.png",
-      "target": ["zip"],
+      "target": [
+        "zip"
+      ],
       "artifactName": "GitThor-${version}-windows-${arch}.${ext}"
     },
-    "portable": { "artifactName": "GitThor-${version}-windows-${arch}-portable.${ext}" },
+    "portable": {
+      "artifactName": "GitThor-${version}-windows-${arch}-portable.${ext}"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,

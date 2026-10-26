@@ -61,11 +61,16 @@ function registerIpc() {
 async function createWindow() {
   window = new BrowserWindow({ width: 1520, height: 960, minWidth: 1080, minHeight: 700,
     backgroundColor: '#111419', title: 'GitThor', icon: path.join(__dirname, '../assets/icon.png'),
-    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true } });
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true, spellcheck: false } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('will-attach-webview', event => event.preventDefault());
-  window.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+  const mayWriteClipboard = (wc, permission) => wc === window.webContents && permission === 'clipboard-sanitized-write';
+  window.webContents.session.setPermissionRequestHandler((wc, permission, callback) => callback(mayWriteClipboard(wc, permission)));
+  window.webContents.session.setPermissionCheckHandler(mayWriteClipboard);
+  window.webContents.session.setSpellCheckerEnabled(false);
+  // Git remotes use the separate Git process. The application UI needs no network.
+  window.webContents.session.webRequest.onBeforeRequest({ urls: ['http://*/*', 'https://*/*', 'ws://*/*', 'wss://*/*'] }, (_details, callback) => callback({ cancel: true }));
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: 'Archivo', submenu: [
       { label: 'Abrir repositorio', accelerator: 'CmdOrCtrl+O', click: () => window.webContents.send('app:command', 'open') },

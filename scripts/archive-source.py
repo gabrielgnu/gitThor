@@ -8,7 +8,7 @@ version = json.loads((root / "package.json").read_text(encoding="utf-8"))["versi
 output = root / "dist" / f"GitThor-{version}-source.zip"
 output.parent.mkdir(exist_ok=True)
 entries = [".github", ".gitignore", ".gitattributes", "package.json", "package-lock.json", "LICENSE",
-           "README.md", "CONTRIBUTING.md", "VALIDATION.md", "electron", "src", "assets", "tests", "scripts", "ci"]
+           "README.md", "CONTRIBUTING.md", "VALIDATION.md", "PRIVACY.md", "SECURITY.md", "docs", "electron", "src", "assets", "tests", "scripts", "ci"]
 with ZipFile(output, "w", compression=ZIP_DEFLATED) as archive:
     for entry in entries:
         target = root / entry

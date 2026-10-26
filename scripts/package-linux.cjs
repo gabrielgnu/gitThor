@@ -17,6 +17,8 @@ async function main() {
   await fs.copyFile(path.join(root, 'assets/icon.png'), target('usr/share/icons/hicolor/512x512/apps/gitthor.png'));
   await fs.copyFile(path.join(root, 'LICENSE'), target('usr/share/doc/gitthor/copyright'));
   await fs.copyFile(path.join(root, 'README.md'), target('usr/share/doc/gitthor/README.md'));
+  for (const name of ['PRIVACY.md', 'SECURITY.md']) await fs.copyFile(path.join(root, name), target('usr/share/doc/gitthor/' + name));
+  await fs.cp(path.join(root, 'docs'), target('usr/share/doc/gitthor/docs'), { recursive: true });
   await fs.writeFile(target('usr/share/applications/gitthor.desktop'), '[Desktop Entry]\nType=Application\nName=GitThor\nComment=Visual Git client\nExec=/opt/GitThor/gitthor %U\nIcon=gitthor\nTerminal=false\nCategories=Development;RevisionControl;\nStartupWMClass=gitthor\n');
   await fs.writeFile(target('DEBIAN/control'), `Package: gitthor\nVersion: ${pkg.version}\nSection: devel\nPriority: optional\nArchitecture: amd64\nMaintainer: GitThor contributors\nDepends: ${pkg.build.deb.depends.join(', ')}\nDescription: Open source visual Git client\n Local history graph, branches, diffs, commits, stash and remote operations.\n`);
   await fs.writeFile(target('opt/GitThor/resources/apparmor-profile'), 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile gitthor /opt/GitThor/gitthor flags=(unconfined) {\n  userns,\n}\n');

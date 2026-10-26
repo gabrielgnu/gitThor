@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-26T14:31:21.832Z",
+  "platform": "win32",
+  "version": "0.1.1",
+  "checks": [
+    {
+      "name": "Commit metadata and diffs remain inert text, including control separators",
+      "passed": true
+    },
+    {
+      "name": "Renderer has no Node or raw IPC; unopened repositories are rejected",
+      "passed": true
+    },
+    {
+      "name": "IPC from a foreign window is denied even with the application preload",
+      "passed": true
+    },
+    {
+      "name": "CSP blocks inline scripts and renderer network requests",
+      "passed": true
+    },
+    {
+      "name": "Electron session blocks HTTP before the local canary receives it",
+      "passed": true
+    },
+    {
+      "name": "Notifications denied, renderer isolated and dictionary downloads disabled",
+      "passed": true
+    },
+    {
+      "name": "Settings store only recent local paths and theme, without repository content",
+      "passed": true
+    },
+    {
+      "name": "Popups and external navigation cannot leave the local application",
+      "passed": true
+    }
+  ],
+  "canaryRequests": 0,
+  "note": "Playwright uses --no-sandbox for Linux automation; this is not a production sandbox attestation."
+}

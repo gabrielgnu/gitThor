@@ -1,5 +1,7 @@
 # Validación de GitThor 0.1.0
 
+Esta sección conserva la validación inicial de 0.1.0. La revisión posterior **0.1.1**, con refuerzos de seguridad y pruebas de privacidad, está documentada en [docs/security-tests.md](docs/security-tests.md). Usá 0.1.1 para obtener esos cambios.
+
 Ejecución local: 26 de octubre de 2026. Fixtures sintéticos; no se usaron repositorios de clientes ni remotos de terceros para las pruebas Git.
 
 | Validación | Entorno | Resultado |

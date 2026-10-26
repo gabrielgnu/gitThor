@@ -27,9 +27,15 @@ jobs:
       - name: Windows desktop smoke test
         if: runner.os == 'Windows'
         run: npm run test:ui
+      - name: Windows security desktop tests
+        if: runner.os == 'Windows'
+        run: npm run test:security:ui
       - name: Linux desktop smoke test
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum npm run test:ui
+      - name: Linux security desktop tests
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run test:security:ui
       - name: Windows ZIP
         if: runner.os == 'Windows'
         run: npm run dist:win -- --publish never
@@ -65,3 +71,4 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: xvfb-run --auto-servernum npm run test:ui -- --no-sandbox
+      - run: xvfb-run --auto-servernum npm run test:security:ui -- --no-sandbox

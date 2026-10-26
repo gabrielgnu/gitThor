@@ -13,7 +13,7 @@ curl --fail --location --show-error "https://nodejs.org/dist/latest-v24.x/$ARCHI
 (cd "$BUILD" && awk '$2 ~ /linux-x64.tar.xz$/ {print}' SHASUMS256.txt | sha256sum --check)
 tar -xJf "$BUILD/$ARCHIVE" --strip-components=1 -C "$BUILD/runtime"
 export PATH="$BUILD/runtime/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-(cd "$ROOT" && tar -cf - package.json package-lock.json LICENSE README.md electron src assets tests scripts) | tar -xf - -C "$BUILD/project"
+(cd "$ROOT" && tar -cf - package.json package-lock.json LICENSE README.md PRIVACY.md SECURITY.md docs electron src assets tests scripts) | tar -xf - -C "$BUILD/project"
 cd "$BUILD/project"
 node --version
 git --version

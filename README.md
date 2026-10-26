@@ -4,6 +4,28 @@ Cliente Git visual, open source e independiente, inspirado en los flujos de trab
 
 **Mantenedor:** [@gabrielgnu](https://github.com/gabrielgnu). Repositorio del proyecto: [gabrielgnu/gitThor](https://github.com/gabrielgnu/gitThor).
 
+## Privacidad: no recopilamos datos de usuario
+
+**No recopilamos ni enviamos datos de usuario a servidores de GitThor.** No hay telemetría, analítica, publicidad, rastreadores, cuenta obligatoria ni envío automático de errores.
+
+El repositorio se procesa localmente. En tu equipo se guardan las rutas de repositorios recientes, el tema y la caché de Electron. Cuando pedís clone, fetch, pull o push, Git se comunica con el remoto que elegiste; un push puede incluir archivos y los nombres y correos de autoría de los commits. Esas conexiones se rigen por las políticas del proveedor Git.
+
+La interfaz bloquea conexiones web y descargas de diccionarios. Podés revisar exactamente qué se procesa, qué se conserva localmente y cómo borrarlo en [PRIVACY.md](PRIVACY.md).
+
+## Seguridad verificable
+
+Incluimos pruebas automatizadas contra inyección de comandos y HTML, accesos a rutas externas, IPC no autorizado, ejecución de helpers en vistas de diferencias, exposición de credenciales, permisos y conexiones web de la interfaz. Se ejecutan con datos sintéticos y archivos canario, incluyendo una ventana Electron real.
+
+```sh
+npm run test:security
+npm run test:security:ui
+npm audit --audit-level=low
+```
+
+Los controles, las instrucciones para reproducir las pruebas y sus límites están en [SECURITY.md](SECURITY.md). El código es revisable; las pruebas no se presentan como una garantía absoluta ni una certificación de seguridad.
+
+La revisión **0.1.1** incluye el [informe de pruebas de seguridad y privacidad](docs/security-tests.md), con resultados y evidencia de Windows y Ubuntu. Para informar una vulnerabilidad sin publicar sus detalles, usá [el canal privado de seguridad](https://github.com/gabrielgnu/gitThor/security/advisories/new).
+
 ## Acceso público y control de cambios
 
 El repositorio es público: cualquier persona puede leerlo, descargarlo y crear un fork. La visibilidad pública no concede permiso para escribir en este repositorio, hacer push ni fusionar cambios. El mantenedor conserva el control de las incorporaciones y de los permisos de colaboración.
@@ -88,10 +110,10 @@ Desde WSL podés ejecutar `bash scripts/linux-build.sh`: descarga Node 24 con co
 El objetivo es Windows 10/11 x64, Debian 12/13 x64 y Ubuntu 22.04/24.04 x64. La compatibilidad se debe confirmar ejecutando los artefactos en cada distribución; tener una configuración de build no equivale a una instalación validada. El instalador Windows no está firmado. AppImage puede requerir FUSE (`libfuse2` o `libfuse2t64`, según la distribución); el `.deb` usa las dependencias del sistema.
 
 ```sh
-sudo apt install ./GitThor-0.1.0-linux-amd64.deb
+sudo apt install ./GitThor-0.1.1-linux-amd64.deb
 # O, con AppImage:
-chmod +x GitThor-0.1.0-linux-x86_64.AppImage
-./GitThor-0.1.0-linux-x86_64.AppImage
+chmod +x GitThor-0.1.1-linux-x86_64.AppImage
+./GitThor-0.1.1-linux-x86_64.AppImage
 ```
 
 ## Verificar
