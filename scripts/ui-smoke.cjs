@@ -1,0 +1,106 @@
+const { _electron: electron } = require('playwright');
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const { GitService, run } = require('../electron/git-service.cjs');
+
+(async () => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'gitthor-ui-'));
+  const repo = path.join(temp, 'atlas-workspace');
+  const profile = path.join(temp, 'profile');
+  const output = path.join(__dirname, '../test-results');
+  let app;
+  try {
+    await fs.mkdir(repo); await fs.mkdir(profile); await fs.mkdir(output, { recursive: true });
+    const service = new GitService(); await service.init(repo);
+    for (const [key, value] of [['user.name', 'Alex Rivera'], ['user.email', 'alex@example.invalid'], ['commit.gpgsign', 'false'], ['core.autocrlf', 'false'], ['core.hooksPath', path.join(temp, 'no-hooks')]]) await run(repo, ['config', key, value]);
+    let n = 0;
+    async function seed(subject, file = 'README.md') {
+      await fs.writeFile(path.join(repo, file), `# Atlas workspace\n\n${subject}\n\nRevision ${++n}\n`);
+      await service.mutate(repo, 'stage', { paths: [file] }); await service.mutate(repo, 'commit', { message: subject });
+    }
+    await seed('Initial commit: a place for new ideas');
+    await seed('docs: add contributor guidelines', 'CONTRIBUTING.md');
+    await service.mutate(repo, 'branch', { branch: 'feature/workspace' });
+    await seed('feat: introduce the workspace explorer', 'explorer.js');
+    await seed('feat: add keyboard navigation', 'keyboard.js');
+    await service.mutate(repo, 'checkout', { branch: 'main' });
+    await seed('chore: configure cross-platform builds', 'build.json');
+    await service.mutate(repo, 'merge', { branch: 'feature/workspace' });
+    await run(repo, ['tag', '-a', 'v0.1.0', '-m', 'First milestone']);
+    await seed('fix: preserve selection when switching branches', 'selection.js');
+    await seed('style: refine the commit detail panel', 'theme.css');
+    await service.mutate(repo, 'branch', { branch: 'feature/diff-view' });
+    await seed('feat: highlight changes in the diff viewer', 'diff.js');
+    await seed('perf: keep graph rendering responsive', 'graph.js');
+    await fs.writeFile(path.join(repo, 'README.md'), '# Atlas workspace\n\nA better view of your next commit.\n');
+    await fs.writeFile(path.join(repo, 'notes.txt'), 'Ideas for the next release\n');
+
+    const env = { ...process.env, GITTHOR_PROFILE: profile }; delete env.ELECTRON_RUN_AS_NODE;
+    const executablePath = process.env.GITTHOR_EXECUTABLE;
+    app = await electron.launch({ ...(executablePath ? { executablePath } : {}), args: [...(executablePath ? [] : [path.resolve(__dirname, '..')]), ...process.argv.slice(2)], env, timeout: 60000 });
+    const page = await app.firstWindow(); page.setDefaultTimeout(20000);
+    const errors = []; page.on('pageerror', e => errors.push(e.message));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    await page.waitForFunction(() => document.getElementById('git-version').textContent.startsWith('git version'));
+    assert.equal(await page.evaluate(() => typeof window.require), 'undefined');
+    assert.equal(await app.evaluate(({ app }) => app.getPath('userData')), profile);
+    await page.screenshot({ path: path.join(output, 'welcome.png') });
+    await app.evaluate(({ dialog }, folder) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [folder] }); }, repo);
+    await page.locator('#welcome-open').click();
+    await page.locator('#workspace').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelectorAll('.commit-row').length >= 10 && !document.body.classList.contains('busy'));
+    assert.equal(await page.locator('#current-branch').textContent(), 'feature/diff-view');
+    assert.equal(await page.locator('#unstaged-files .file-row').count(), 2);
+    await page.locator('#unstaged-files .file-open').first().click();
+    await page.waitForFunction(() => document.querySelectorAll('#diff-content .diff-line').length > 0);
+    assert.match(await page.locator('#diff-content').textContent(), /A better view/);
+    await page.locator('#close-diff').click();
+    await page.locator('#stage-all').click();
+    await page.waitForFunction(() => document.getElementById('staged-count').textContent === '2' && !document.body.classList.contains('busy'));
+    assert.equal((await service.snapshot(repo)).files.filter(f => f.staged).length, 2);
+    // Individual unstage/stage must remain enabled after the previous operation.
+    await page.locator('#staged-files .file-toggle').first().click();
+    await page.waitForFunction(() => document.getElementById('unstaged-count').textContent === '1' && !document.body.classList.contains('busy'));
+    await page.locator('#unstaged-files .file-toggle').first().click();
+    await page.waitForFunction(() => document.getElementById('staged-count').textContent === '2' && !document.body.classList.contains('busy'));
+    await page.locator('#commit-message').fill('docs: capture the next chapter\n\nVerified from the desktop UI.');
+    await page.screenshot({ path: path.join(output, 'workspace.png') });
+    await page.locator('#commit').click();
+    await page.waitForFunction(() => document.getElementById('changes-count').textContent === '0' && !document.body.classList.contains('busy'));
+    const snapshot = await service.snapshot(repo); assert.equal(snapshot.commits[0].subject, 'docs: capture the next chapter'); assert.equal(snapshot.files.length, 0);
+    await page.locator('.commit-row').first().click();
+    await page.locator('#commit-panel .file-row').first().waitFor();
+    assert.match(await page.locator('#commit-panel').textContent(), /Verified from the desktop UI/);
+    await page.locator('#commit-panel .file-open').first().click();
+    await page.waitForFunction(() => document.querySelectorAll('#diff-content .diff-line').length > 0);
+    await page.screenshot({ path: path.join(output, 'commit-diff.png') });
+    await page.locator('#close-diff').click();
+    await page.locator('#search').fill('keyboard'); assert.equal(await page.locator('.commit-row').count(), 1);
+    await page.locator('#search').fill('no-such-commit-123'); assert.equal(await page.locator('.commit-row').count(), 0);
+    await page.locator('#search').fill('');
+    await page.locator('#new-branch').click(); await page.locator('#field-branch').fill('feature/from-ui'); await page.locator('#modal-submit').click();
+    await page.waitForFunction(() => document.getElementById('current-branch').textContent === 'feature/from-ui' && !document.body.classList.contains('busy'));
+    assert.equal((await service.snapshot(repo)).branch, 'feature/from-ui');
+    await page.locator('#local-branches .branch-item').filter({ hasText: /^⑂main$/ }).click();
+    await page.locator('#modal-submit').click();
+    await page.waitForFunction(() => document.getElementById('current-branch').textContent === 'main' && !document.body.classList.contains('busy'));
+    await page.locator('#theme-toggle').click(); assert.equal(await page.locator('body.light').count(), 1);
+    await page.screenshot({ path: path.join(output, 'light-theme.png') });
+    await page.locator('#theme-toggle').click();
+    await page.setViewportSize({ width: 1080, height: 700 });
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    assert.equal(overflow, false, 'Minimum window size should not overflow horizontally');
+    await page.screenshot({ path: path.join(output, 'minimum-window.png') });
+    const preferences = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences());
+    assert.equal(preferences.contextIsolation, true); assert.equal(preferences.sandbox, true); assert.equal(preferences.nodeIntegration, false);
+    assert.deepEqual(errors, [], 'Renderer should not emit script or CSP errors');
+    console.log('PASS Electron UI: open, real history, diff, stage/unstage, commit, detail, search, create/switch branch, themes, minimum size, isolation.');
+    console.log('Screenshots:', output);
+  } finally {
+    if (app) await app.close();
+    const resolved = path.resolve(temp);
+    if (path.dirname(resolved) === path.resolve(os.tmpdir()) && path.basename(resolved).startsWith('gitthor-ui-')) await fs.rm(resolved, { recursive: true, force: true, maxRetries: 8, retryDelay: 200 });
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; });

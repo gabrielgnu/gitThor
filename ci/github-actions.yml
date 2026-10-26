@@ -1,0 +1,67 @@
+name: Build and test GitThor
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - name: Install Linux desktop libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-0t64 libnss3 libasound2t64 libgbm1 xvfb
+      - name: Windows desktop smoke test
+        if: runner.os == 'Windows'
+        run: npm run test:ui
+      - name: Linux desktop smoke test
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run test:ui
+      - name: Windows ZIP
+        if: runner.os == 'Windows'
+        run: npm run dist:win -- --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Windows installer
+        if: runner.os == 'Windows'
+        run: npm run dist:win:installer -- --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Packaged Windows desktop
+        if: runner.os == 'Windows'
+        run: node scripts/packaged-smoke.cjs dist/win-unpacked/GitThor.exe
+      - name: Linux packages
+        if: runner.os == 'Linux'
+        run: npm run dist:linux -- --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitthor-${{ runner.os }}
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.deb
+            dist/*.AppImage
+            test-results/*.png
+          if-no-files-found: error
+  debian:
+    runs-on: ubuntu-24.04
+    container: node:24-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - run: apt-get update && apt-get install -y git xvfb libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 libxtst6
+      - run: npm ci
+      - run: npm test
+      - run: xvfb-run --auto-servernum npm run test:ui -- --no-sandbox

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>GitThor — Visual Git client</title>
+  <link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="graph.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="application">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Inicio de GitThor"><img src="../assets/logo.svg" alt=""><strong>git<span>thor</span></strong><span class="edition">OPEN SOURCE</span></a>
+      <button id="repo-switch" class="repo-switch"><span class="repo-icon">▣</span><span id="repo-name">Tu espacio de trabajo</span><span class="chevron">⌄</span></button>
+      <div class="top-spacer"></div>
+      <span class="local-badge"><i></i> Local first</span>
+      <button class="icon-button" id="theme-toggle" title="Cambiar tema" aria-label="Cambiar tema">◐</button>
+      <button class="avatar" id="about" title="Acerca de GitThor">GT</button>
+    </header>
+    <div id="welcome" class="welcome">
+      <div class="welcome-art"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><img src="../assets/logo.svg" alt=""></div>
+      <span class="eyebrow">TU CÓDIGO. TU HISTORIA. TU CONTROL.</span>
+      <h1>Una nueva perspectiva<br>de tu próximo commit<span>.</span></h1>
+      <p>Un cliente Git visual, abierto y sin suscripciones.<br>Hecho para que las ramas no interrumpan tus ideas.</p>
+      <div class="welcome-actions"><button id="welcome-open" class="primary">▣ &nbsp; Abrir repositorio <kbd>Ctrl O</kbd></button><button id="welcome-clone" class="secondary">↓ &nbsp; Clonar repositorio</button><button id="welcome-init" class="text-button">＋ Crear repositorio</button></div>
+      <div id="recent-section" class="recent-section" hidden><div class="section-heading"><span>RECIENTES</span><span class="muted">Continuá donde lo dejaste</span></div><div id="recent-list"></div></div>
+      <div class="welcome-footer"><span>⌘ Windows & Linux</span><span>◈ Licencia MIT</span><span id="git-version">Comprobando Git…</span></div>
+      <div id="browser-notice" class="browser-notice" hidden>Vista de presentación. Para trabajar con repositorios locales, ejecutá <code>npm start</code> en la aplicación de escritorio.</div>
+    </div>
+    <main id="workspace" class="workspace" hidden>
+      <aside class="sidebar">
+        <div class="sidebar-title"><span>EXPLORADOR</span><button class="small-icon" id="reveal" title="Abrir carpeta">↗</button></div>
+        <button class="nav-item active" id="view-history"><span>◷</span> Historial <span class="nav-shortcut">Ctrl 1</span></button>
+        <button class="nav-item" id="view-changes"><span>◈</span> Cambios locales <span id="changes-count" class="count">0</span></button>
+        <div class="sidebar-group"><div class="group-title"><span>⑂ &nbsp; RAMAS LOCALES</span><button class="small-icon" id="new-branch" title="Crear rama">＋</button></div><div id="local-branches"></div></div>
+        <div class="sidebar-group"><div class="group-title"><span>☁ &nbsp; REMOTOS</span><button class="small-icon" id="add-remote" title="Agregar remoto">＋</button></div><div id="remote-branches"></div></div>
+        <div class="sidebar-group"><div class="group-title"><span>◇ &nbsp; ETIQUETAS</span></div><div id="tags"></div></div>
+        <div class="sidebar-group"><div class="group-title"><span>▤ &nbsp; STASH</span><button class="small-icon" id="new-stash" title="Guardar cambios en stash">＋</button></div><div id="stashes"></div></div>
+        <div class="sidebar-bottom"><div class="opensource-mark">◉</div><div><strong>Abierto por naturaleza.</strong><span>Tu repositorio se queda con vos.</span></div></div>
+      </aside>
+      <section class="center-panel">
+        <div class="toolbar"><div class="branch-current"><span class="green">⑂</span><strong id="current-branch">main</strong></div><span class="toolbar-divider"></span><button id="fetch" class="tool-button" title="Actualizar todas las referencias remotas">↓ <span>Fetch</span></button><button id="pull" class="tool-button" title="Pull: solo avance rápido">⇣ <span>Pull</span><small id="behind"></small></button><button id="push" class="tool-button" title="Enviar la rama actual">↑ <span>Push</span><small id="ahead"></small></button><div class="top-spacer"></div><button id="refresh" class="icon-button" title="Actualizar (Ctrl R)">⟳</button><button id="branch-actions" class="icon-button" title="Operaciones de ramas">•••</button></div>
+        <div class="history-heading"><div><span class="eyebrow">REPOSITORIO</span><h2>El recorrido de tu código<span class="green">.</span></h2></div><span id="commit-total" class="pill">0 commits</span></div>
+        <div id="operation-banner" class="operation-banner" hidden><span id="operation-label"></span><button id="continue-operation">Continuar</button><button id="abort-operation">Abortar</button></div>
+        <div class="search-row"><span>⌕</span><input id="search" type="search" placeholder="Buscar por mensaje, autor o commit…" aria-label="Buscar commits"><kbd>Ctrl K</kbd></div>
+        <button id="working-row" class="working-row"><span class="working-dot"></span><span><strong>Cambios sin confirmar</strong><small id="working-summary">Tu árbol de trabajo está limpio</small></span><span id="working-count" class="pill">0 archivos</span><span class="muted">→</span></button>
+        <div class="history-columns"><span>GRAFO</span><span>MENSAJE DEL COMMIT</span><span>AUTOR</span><span>COMMIT</span></div>
+        <div id="commit-list" class="commit-list" role="list" aria-label="Historial de commits"></div>
+        <div class="history-footer"><span><i class="green-dot"></i> <span id="history-status">Todo actualizado</span></span><button id="load-more" class="text-button">Cargar más historial ↓</button></div>
+      </section>
+      <aside class="details-panel">
+        <div class="detail-tabs"><button class="active" id="tab-changes">Cambios locales</button><button id="tab-commit">Detalle del commit</button></div>
+        <div id="changes-panel" class="changes-panel"><div class="detail-heading"><h3>Tu próximo commit</h3><span id="file-count" class="muted">0 archivos</span></div><p class="detail-description">Prepará tus cambios y seguí construyendo.</p>
+          <div class="file-section"><div class="file-section-heading"><span>CAMBIOS <b id="unstaged-count">0</b></span><button id="stage-all" class="tiny-button">Preparar todo ＋</button></div><div id="unstaged-files" class="file-list"></div></div>
+          <div class="file-section staged-section"><div class="file-section-heading"><span><i class="green-dot"></i> PREPARADOS <b id="staged-count">0</b></span><button id="unstage-all" class="tiny-button">Quitar todo −</button></div><div id="staged-files" class="file-list"></div></div>
+          <div class="commit-form"><label for="commit-message">Mensaje del commit</label><textarea id="commit-message" rows="4" placeholder="¿Qué cambió y por qué?&#10;&#10;Un buen mensaje cuenta una historia."></textarea><div class="commit-hint"><span>Markdown no requerido. Claridad, sí.</span><span id="message-length">0</span></div><button id="commit" class="primary commit-button">✓ &nbsp; Crear commit <kbd>Ctrl ↵</kbd></button><p class="commit-note">Se incluirán solo los archivos preparados.</p></div>
+        </div>
+        <div id="commit-panel" class="commit-panel" hidden></div>
+        <div id="diff-panel" class="diff-panel" hidden><div class="diff-heading"><span id="diff-title"></span><button id="close-diff" class="small-icon" title="Cerrar diferencias">×</button></div><div id="diff-content" class="diff-content"></div></div>
+      </aside>
+    </main>
+    <footer class="statusbar"><span><i class="green-dot"></i> <span id="status-text">Listo para construir</span></span><div class="top-spacer"></div><span id="status-repo"></span><span>GitThor <span id="app-version">0.1.0</span></span><span class="status-open">MIT ↗</span></footer>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="modal"><form id="modal-form"><div class="modal-top"><span class="eyebrow">GITTHOR</span><button type="button" id="modal-close" class="icon-button" aria-label="Cerrar">×</button></div><h2 id="modal-title"></h2><p id="modal-description"></p><div id="modal-fields"></div><div class="modal-actions"><button type="button" id="modal-cancel" class="secondary">Cancelar</button><button id="modal-submit" type="submit" class="primary">Continuar</button></div></form></dialog>
+</body>
+</html>

@@ -1,0 +1,94 @@
+{
+  "name": "gitthor",
+  "version": "0.1.0",
+  "description": "An open source, cross-platform visual Git client",
+  "homepage": "https://github.com/gabrielgnu/gitThor#readme",
+  "repository": { "type": "git", "url": "https://github.com/gabrielgnu/gitThor.git" },
+  "bugs": { "url": "https://github.com/gabrielgnu/gitThor/issues" },
+  "desktopName": "gitthor.desktop",
+  "main": "electron/main.cjs",
+  "author": "GitThor contributors",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/git-service.test.cjs",
+    "test:ui": "node scripts/ui-smoke.cjs",
+    "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/git-service.cjs && node --check src/app.js && node --check src/graph.js && node --check scripts/package-linux.cjs && node --check scripts/ui-smoke.cjs && node --check scripts/packaged-smoke.cjs",
+    "pack": "electron-builder --dir",
+    "dist:win": "electron-builder --win zip --x64",
+    "dist:win:portable": "electron-builder --win portable --x64",
+    "dist:win:installer": "electron-builder --win nsis --x64",
+    "dist:linux": "node scripts/package-linux.cjs"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "playwright": "1.64.1"
+  },
+  "build": {
+    "appId": "org.gitthor.desktop",
+    "productName": "GitThor",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "assets/**/*",
+      "LICENSE",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/icon.png",
+      "target": ["zip"],
+      "artifactName": "GitThor-${version}-windows-${arch}.${ext}"
+    },
+    "portable": { "artifactName": "GitThor-${version}-windows-${arch}-portable.${ext}" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "executableName": "gitthor",
+      "syncDesktopName": true,
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "category": "Development",
+      "icon": "assets/icon.png",
+      "maintainer": "GitThor contributors",
+      "artifactName": "GitThor-${version}-linux-${arch}.${ext}",
+      "desktop": {
+        "entry": {
+          "Name": "GitThor",
+          "Comment": "Visual Git client",
+          "Categories": "Development;RevisionControl;"
+        }
+      }
+    },
+    "deb": {
+      "depends": [
+        "git",
+        "libgtk-3-0 | libgtk-3-0t64",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0 | libatspi2.0-0t64",
+        "libuuid1",
+        "libsecret-1-0",
+        "libasound2 | libasound2t64",
+        "libgbm1",
+        "libdrm2"
+      ]
+    }
+  }
+}
